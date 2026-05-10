@@ -41,7 +41,7 @@
   .site-title { font-family: var(--mono); font-size: 18px; font-weight: 500; color: var(--text); letter-spacing: -0.02em; }
   .site-title span { color: var(--accent); }
   .site-sub { font-size: 12px; color: var(--text3); margin-top: 4px; font-family: var(--mono); }
-  .add-files-btn { display: flex; align-items: center; gap: 6px; font-size: 12px; font-family: var(--mono); padding: 7px 14px; background: var(--bg3); border: 1px solid var(--border2); border-radius: var(--radius); color: var(--text2); cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+  .add-files-btn { display: flex; align-items: center; gap: 6px; font-size: 14px; font-family: var(--mono); padding: 10px 18px; background: var(--bg3); border: 1px solid var(--border2); border-radius: var(--radius); color: var(--text2); cursor: pointer; transition: all 0.15s; white-space: nowrap; }
   .add-files-btn:hover { border-color: var(--accent); color: var(--accent); }
 
   /* Drop zone */
@@ -172,6 +172,8 @@
   .message-role.user { color: var(--accent); }
   .message-role.assistant { color: #5fad6b; }
   .message-text { font-size: 13px; color: var(--text2); line-height: 1.7; white-space: pre-wrap; word-break: break-word; }
+  .expand-msg-btn { display: inline-block; margin-top: 8px; font-size: 11px; font-family: var(--mono); padding: 3px 10px; background: var(--bg3); border: 1px solid var(--border2); border-radius: 4px; color: var(--text3); cursor: pointer; transition: all 0.1s; }
+  .expand-msg-btn:hover { color: var(--accent); border-color: var(--accent); }
 
   .highlight { background: rgba(196,164,32,0.25); color: #e8d45a; border-radius: 2px; padding: 0 2px; }
   .thread-highlight { background: rgba(230,168,23,0.35); color: var(--amber); border-radius: 2px; padding: 0 2px; }
@@ -474,6 +476,22 @@ function hlText(text,terms,threadQ){
   return r;
 }
 
+const TRUNC_LEN=1200;
+function buildMessageBody(text,convId,msgIdx,threadQ){
+  if(text.length<=TRUNC_LEN)return hlText(text,searchTerms,threadQ||'');
+  const remaining=text.length-TRUNC_LEN;
+  return hlText(text.slice(0,TRUNC_LEN),searchTerms,threadQ||'')
+    +`<button class="expand-msg-btn" onclick="expandMessage('${convId}',${msgIdx},this)">show full message (${remaining.toLocaleString()} more chars)</button>`;
+}
+
+function expandMessage(convId,msgIdx,btn){
+  const conv=allConversations.find(c=>c.id===convId);if(!conv)return;
+  const msg=conv.messages[msgIdx];if(!msg)return;
+  const threadQ=(threadState[convId]&&threadState[convId].query)||'';
+  const textDiv=btn.parentElement;
+  textDiv.innerHTML=hlText(msg.text,searchTerms,threadQ);
+}
+
 function formatDate(ts){
   if(!ts)return'—';
   return new Date(ts*1000).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
@@ -534,7 +552,7 @@ function renderThreadMessages(convId,scrollId,mcId){
     const cls=isCur?'message thread-current':isMatch?'message thread-match':'message';
     return`<div class="${cls}" id="tmsg-${convId.slice(0,8)}-${i}">
       <div class="message-role ${m.role}">${m.role==='user'?'YOU':'AI'}</div>
-      <div class="message-text">${hlText(m.text.slice(0,1200),searchTerms,state.query)}${m.text.length>1200?'\n\n[message continues…]':''}</div>
+      <div class="message-text">${buildMessageBody(m.text,convId,i,state.query)}</div>
     </div>`;
   }).join('');
   const mcEl=document.getElementById(mcId);
@@ -619,7 +637,7 @@ function renderConversations(){
           ${conv.messages.map((m,mi)=>`
             <div class="message" id="tmsg-${conv.id.slice(0,8)}-${mi}">
               <div class="message-role ${m.role}">${m.role==='user'?'YOU':'AI'}</div>
-              <div class="message-text">${hlText(m.text.slice(0,1200),searchTerms,'')}${m.text.length>1200?'\n\n[message continues…]':''}</div>
+              <div class="message-text">${buildMessageBody(m.text,conv.id,mi,'')}</div>
             </div>`).join('')}
         </div>
       </div>
